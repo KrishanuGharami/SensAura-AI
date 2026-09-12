@@ -171,6 +171,37 @@ flutter run -d android
 
 ---
 
+## 🌐 Vercel Deployment
+
+SensAura AI is fully configured for zero-configuration deployment on **Vercel** with automated cloud build scripts, single-page application (SPA) rewrites, caching policies, and PWA configuration.
+
+### Method A: One-Click Git Deployment (Recommended)
+1. Go to [vercel.com/new](https://vercel.com/new).
+2. Import repository: `KrishanuGharami/SensAura-AI`.
+3. Select branch: `hackathon-mvp`.
+4. Click **Deploy**. Vercel will automatically run `bash vercel-build.sh` and deploy the Flutter Web release bundle to a live URL (e.g., `https://sensaura-ai.vercel.app`).
+
+### Method B: Instant Manual CLI Deploy (Pre-built, 10s)
+Since the production bundle is already compiled in `build/web`:
+```bash
+# 1. Authenticate with Vercel (first time only)
+npx vercel login
+
+# 2. Deploy prebuilt bundle directly to production
+npx vercel deploy build/web --prod
+```
+
+### Method C: Full Local Build & Deploy
+```bash
+# Build locally
+npm run build:local
+
+# Deploy to Vercel production
+npx vercel --prod
+```
+
+---
+
 ## 🏆 Hackathon Submission Details
 
 - **Event**: iQOO Hackathon 2026
