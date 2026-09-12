@@ -1,11 +1,11 @@
 {
-    "name": "sensaura_ai",
-    "short_name": "sensaura_ai",
+    "name": "SensAura AI",
+    "short_name": "SensAura",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0F172A",
+    "theme_color": "#10B981",
+    "description": "SensAura AI - Offline-First Ambient Intelligence Layer",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

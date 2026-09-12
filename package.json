@@ -1,10 +1,13 @@
 {
   "name": "sensaura-ai",
   "version": "1.0.0",
-  "description": "SensAura AI - Offline-First, On-Device Contextual Automated Home Assistant",
+  "description": "SensAura AI - Offline-First Ambient Intelligence Layer",
   "private": true,
   "scripts": {
-    "build": "npm run vercel-build",
-    "vercel-build": "if [ ! -d \"flutter\" ]; then git clone https://github.com/flutter/flutter.git --depth 1 -b stable flutter; fi && ./flutter/bin/flutter build web --release"
+    "build": "bash vercel-build.sh",
+    "vercel-build": "bash vercel-build.sh",
+    "build:local": "flutter build web --release",
+    "deploy:prebuilt": "npx vercel deploy build/web --prod",
+    "deploy:prod": "npx vercel --prod"
   }
 }
