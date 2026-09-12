@@ -94,7 +94,7 @@ class SimulationControlPanel extends StatelessWidget {
 
           const SizedBox(height: 8),
 
-          // Secondary row: Deep Focus, Sleep Sanctuary, Reset Neutral
+          // Secondary row: Deep Focus, Sleep Sanctuary, Uncertain Conflict
           Row(
             children: [
               Expanded(
@@ -115,19 +115,37 @@ class SimulationControlPanel extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _buildScenarioButton(
-                  MockScenarios.neutral,
-                  Icons.refresh_rounded,
-                  AppColors.textSecondary,
+                  MockScenarios.uncertain,
+                  Icons.warning_amber_rounded,
+                  AppColors.statusWarning,
                 ),
               ),
             ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Neutral Reset Row
+          SizedBox(
+            width: double.infinity,
+            child: _buildScenarioButton(
+              MockScenarios.neutral,
+              Icons.refresh_rounded,
+              AppColors.textSecondary,
+              compact: true,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildScenarioButton(MockScenario scenario, IconData icon, Color color) {
+  Widget _buildScenarioButton(
+    MockScenario scenario,
+    IconData icon,
+    Color color, {
+    bool compact = false,
+  }) {
     final isSelected = currentContext == scenario.targetContext;
 
     return Material(
@@ -137,7 +155,10 @@ class SimulationControlPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          padding: EdgeInsets.symmetric(
+            vertical: compact ? 7 : 10,
+            horizontal: 6,
+          ),
           decoration: BoxDecoration(
             color: isSelected ? color.withValues(alpha: 0.18) : AppColors.cardSurfaceElevated,
             borderRadius: BorderRadius.circular(10),
@@ -155,28 +176,49 @@ class SimulationControlPanel extends StatelessWidget {
                   ]
                 : [],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? color : AppColors.textSecondary,
-              ),
-              const SizedBox(height: 5),
-              Text(
-                scenario.label,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.3,
-                  color: isSelected ? AppColors.textHighlight : AppColors.textSecondary,
+          child: compact
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 14,
+                      color: isSelected ? color : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      scenario.label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                        color: isSelected ? AppColors.textHighlight : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 16,
+                      color: isSelected ? color : AppColors.textSecondary,
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      scenario.label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                        color: isSelected ? AppColors.textHighlight : AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
         ),
       ),
     );

@@ -118,6 +118,26 @@ class MockScenarios {
     ),
   );
 
+  static final MockScenario uncertain = MockScenario(
+    id: 'sim_uncertain',
+    label: 'UNCERTAIN',
+    targetContext: AmbientContextType.uncertain,
+    description: 'Conflict: High motion + High light + Home BLE active',
+    snapshot: SensorSnapshot(
+      accelX: 4.20,
+      accelY: 3.80,
+      accelZ: 12.40,
+      lightLux: 420.0,
+      proximityNear: false,
+      bleDevicesCount: 3,
+      homeBeaconDetected: true,
+      homeBeaconRssi: -55,
+      timestamp: DateTime.now(),
+      isSimulated: true,
+      sourceLabel: 'SIMULATED / LOCAL',
+    ),
+  );
+
   static final MockScenario neutral = MockScenario(
     id: 'sim_neutral',
     label: 'RESET NEUTRAL',
@@ -132,6 +152,7 @@ class MockScenarios {
         arrival,
         focus,
         sleep,
+        uncertain,
         neutral,
       ];
 }

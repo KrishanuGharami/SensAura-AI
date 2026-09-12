@@ -31,9 +31,27 @@ class RuleBasedContextEngine implements ContextInferenceEngine {
     List<String> signals = [];
     AutomationScene scene;
 
+    // 0. SIGNAL CONFLICT / UNCERTAIN CONTEXT EVALUATION
+    // High motion + high illumination while home BLE beacon is active
+    // Indicates departure/transit physics with contradictory home presence signal.
+    final bool isHighMotion = snapshot.motionLevel == MotionLevel.high || accelDeviation > 2.2;
+    final bool isHighLight = lux >= 250.0;
+    final bool hasSignalConflict = hasHomeBle && isHighMotion && isHighLight;
+
+    if (hasSignalConflict) {
+      inferredContext = AmbientContextType.uncertain;
+      confidence = 0.50; // Below actionable threshold (0.60) to ensure NO_ACTION
+      reasoning = 'Conflicting signals: High movement and bright light detected while connected to Home BLE beacon.';
+      signals = [
+        'High motion detected (${accelMag.toStringAsFixed(1)} m/s²)',
+        'Bright illumination (${lux.toStringAsFixed(0)} lux)',
+        'Home BLE beacon connected (${snapshot.homeBeaconRssi} dBm) [CONFLICT]',
+      ];
+      scene = AutomationScene.neutral;
+    }
     // 1. SLEEP SANCTUARY EVALUATION
     // Very dark (< 3 lux), static motion, proximity covered or near
-    if (lux < 3.0 && accelDeviation < 0.5 && isProximityNear && hasHomeBle) {
+    else if (lux < 3.0 && accelDeviation < 0.5 && isProximityNear && hasHomeBle) {
       inferredContext = AmbientContextType.sleep;
       confidence = 0.98;
       reasoning = 'Pitch darkness + stationary phone + proximity sensor engaged suggests sleep state.';

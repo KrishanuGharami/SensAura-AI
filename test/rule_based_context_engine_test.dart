@@ -58,5 +58,14 @@ void main() {
       expect(result.confidence, greaterThanOrEqualTo(0.95));
       expect(result.recommendedScene.id, equals('scene_sleep_sanctuary'));
     });
+
+    test('Infers UNCERTAIN context under conflicting signals (high motion + bright light + home BLE)', () async {
+      final result = await engine.inferContext(MockScenarios.uncertain.snapshot);
+
+      expect(result.context, equals(AmbientContextType.uncertain));
+      expect(result.confidence, lessThan(0.60)); // Under actionable threshold
+      expect(result.reasoning.toLowerCase(), contains('conflicting signals'));
+      expect(result.detectedSignals.any((s) => s.contains('CONFLICT')), isTrue);
+    });
   });
 }
