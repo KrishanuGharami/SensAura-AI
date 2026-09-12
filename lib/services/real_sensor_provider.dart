@@ -14,6 +14,7 @@ class RealSensorProvider implements SensorProvider {
   final MockSensorProvider _fallbackMock = MockSensorProvider();
 
   StreamSubscription<AccelerometerEvent>? _accelSubscription;
+  StreamSubscription<SensorSnapshot>? _fallbackSubscription;
   SensorSnapshot _current = SensorSnapshot.neutral();
   bool _isStreaming = false;
   bool _hardwareAvailable = false;
@@ -70,8 +71,9 @@ class RealSensorProvider implements SensorProvider {
   }
 
   void _activateFallback() {
+    _fallbackSubscription?.cancel();
     _fallbackMock.start();
-    _fallbackMock.sensorStream.listen((snapshot) {
+    _fallbackSubscription = _fallbackMock.sensorStream.listen((snapshot) {
       _current = snapshot;
       _controller.add(_current);
     });
@@ -82,12 +84,15 @@ class RealSensorProvider implements SensorProvider {
     _isStreaming = false;
     await _accelSubscription?.cancel();
     _accelSubscription = null;
+    await _fallbackSubscription?.cancel();
+    _fallbackSubscription = null;
     await _fallbackMock.stop();
   }
 
   @override
   void dispose() {
     _accelSubscription?.cancel();
+    _fallbackSubscription?.cancel();
     _fallbackMock.dispose();
     _controller.close();
   }

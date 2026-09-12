@@ -13,6 +13,7 @@ class RealBleProvider implements BleProvider {
   final MockBleProvider _fallback = MockBleProvider();
 
   StreamSubscription<List<ScanResult>>? _scanSubscription;
+  StreamSubscription<List<BleDeviceInfo>>? _fallbackSubscription;
   List<BleDeviceInfo> _devices = [];
   bool _isScanning = false;
   bool _hardwareAvailable = false;
@@ -52,8 +53,7 @@ class RealBleProvider implements BleProvider {
       final isSupported = await FlutterBluePlus.isSupported;
       if (!isSupported) {
         _hardwareAvailable = false;
-        await _fallback.startScan();
-        _fallback.discoveredDevicesStream.listen((list) => _controller.add(list));
+        _activateFallbackScan();
         return;
       }
 
@@ -83,9 +83,15 @@ class RealBleProvider implements BleProvider {
     } catch (e) {
       debugPrint('Real BLE radio scan failed, seamlessly activating mock fallback: $e');
       _hardwareAvailable = false;
-      await _fallback.startScan();
-      _fallback.discoveredDevicesStream.listen((list) => _controller.add(list));
+      _activateFallbackScan();
     }
+  }
+
+  void _activateFallbackScan() async {
+    _fallbackSubscription?.cancel();
+    await _fallback.startScan();
+    _fallbackSubscription =
+        _fallback.discoveredDevicesStream.listen((list) => _controller.add(list));
   }
 
   @override
@@ -95,12 +101,15 @@ class RealBleProvider implements BleProvider {
       await FlutterBluePlus.stopScan();
       await _scanSubscription?.cancel();
     } catch (_) {}
+    await _fallbackSubscription?.cancel();
+    _fallbackSubscription = null;
     await _fallback.stopScan();
   }
 
   @override
   void dispose() {
     _scanSubscription?.cancel();
+    _fallbackSubscription?.cancel();
     _fallback.dispose();
     _controller.close();
   }
