@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../core/constants/app_constants.dart';
 import '../core/constants/mock_scenarios.dart';
+import '../models/ambient_context.dart';
 import '../models/automation_event.dart';
 import '../models/automation_scene.dart';
+import '../models/context_guard_result.dart';
 import '../models/context_result.dart';
 import '../models/sensor_snapshot.dart';
 import '../models/smart_device.dart';
 import 'ble_provider.dart';
+import 'context_guard.dart';
 import 'context_inference_engine.dart';
 import 'local_storage_service.dart';
 import 'mock_ble_provider.dart';
@@ -18,12 +22,13 @@ import 'sensor_provider.dart';
 
 /// Central state manager and orchestrator for SensAura AI.
 /// Connects physical/simulated sensor streams -> on-device inference engine
-/// -> contextual automation recommendation -> smart device actuators -> local persistence.
+/// -> SensAura Context Guard safety evaluation -> smart device actuators -> local persistence.
 class AutomationService extends ChangeNotifier {
   static final AutomationService _instance = AutomationService._internal();
   factory AutomationService() => _instance;
 
   final LocalStorageService _storage = LocalStorageService();
+  final ContextGuard _contextGuard = const ContextGuard();
 
   late SensorProvider _sensorProvider;
   late BleProvider _bleProvider;
@@ -47,6 +52,11 @@ class AutomationService extends ChangeNotifier {
   List<SmartDevice> _devices = SmartDevice.initialDevices();
   List<AutomationEvent> _history = [];
 
+  // Robustness: Temporal stabilization & Safety timers
+  final List<AmbientContextType> _contextHistory = [];
+  DateTime? _lastSceneAppliedTime;
+  DateTime? _manualOverrideUntil;
+
   bool _isHardwareMode = false;
   bool _isApplyingScene = false;
   bool _isInitialized = false;
@@ -54,6 +64,7 @@ class AutomationService extends ChangeNotifier {
   // Getters
   SensorSnapshot get latestSnapshot => _latestSnapshot;
   ContextResult get latestContextResult => _latestContextResult;
+  ContextGuardResult get latestGuardResult => _latestContextResult.guardResult;
   List<SmartDevice> get devices => List.unmodifiable(_devices);
   List<AutomationEvent> get history => List.unmodifiable(_history);
   bool get isHardwareMode => _isHardwareMode;
@@ -62,6 +73,33 @@ class AutomationService extends ChangeNotifier {
   SensorProvider get currentSensorProvider => _sensorProvider;
   BleProvider get currentBleProvider => _bleProvider;
   ContextInferenceEngine get currentEngine => _inferenceEngine;
+
+  // Cooldown status
+  bool get isCooldownActive {
+    if (_lastSceneAppliedTime == null) return false;
+    return DateTime.now().difference(_lastSceneAppliedTime!).inSeconds <
+        AppConstants.cooldownDurationSeconds;
+  }
+
+  Duration? get cooldownRemaining {
+    if (_lastSceneAppliedTime == null) return null;
+    final elapsed = DateTime.now().difference(_lastSceneAppliedTime!);
+    final remaining =
+        Duration(seconds: AppConstants.cooldownDurationSeconds) - elapsed;
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  // Manual override status
+  bool get isManualOverrideActive {
+    if (_manualOverrideUntil == null) return false;
+    return DateTime.now().isBefore(_manualOverrideUntil!);
+  }
+
+  Duration? get manualOverrideRemaining {
+    if (_manualOverrideUntil == null) return null;
+    final remaining = _manualOverrideUntil!.difference(DateTime.now());
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
 
   /// Initialize SensAura AI services
   Future<void> init() async {
@@ -93,15 +131,66 @@ class AutomationService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Runs the on-device inference engine against the sensor snapshot
+  /// Runs the on-device inference engine and evaluates through SensAura Context Guard
   Future<void> _evaluateContext(SensorSnapshot snapshot) async {
-    final result = await _inferenceEngine.inferContext(snapshot);
-    _latestContextResult = result;
+    final rawResult = await _inferenceEngine.inferContext(snapshot);
+
+    // 1. Hysteresis / Temporal Stabilization
+    _contextHistory.add(rawResult.context);
+    if (_contextHistory.length > AppConstants.hysteresisWindowSize) {
+      _contextHistory.removeAt(0);
+    }
+
+    AmbientContextType stabilizedContext = _latestContextResult.context;
+    if (_contextHistory.length >= AppConstants.hysteresisWindowSize) {
+      final counts = <AmbientContextType, int>{};
+      for (final c in _contextHistory) {
+        counts[c] = (counts[c] ?? 0) + 1;
+      }
+      for (final entry in counts.entries) {
+        if (entry.value >= (AppConstants.hysteresisWindowSize / 2).ceil()) {
+          stabilizedContext = entry.key;
+          break;
+        }
+      }
+    } else {
+      stabilizedContext = rawResult.context;
+    }
+
+    // 2. Presence & Conflict evaluation
+    final bool isPresenceConfirmed =
+        snapshot.homeBeaconDetected || _bleProvider.isHomeBeaconPresent;
+    final bool hasConflict = stabilizedContext == AmbientContextType.uncertain ||
+        (snapshot.homeBeaconDetected &&
+            snapshot.motionLevel == MotionLevel.high &&
+            snapshot.lightLux > 250.0);
+
+    // 3. SensAura Context Guard Evaluation
+    final guardResult = _contextGuard.evaluate(
+      inferredContext: stabilizedContext,
+      confidence: rawResult.confidence,
+      isPresenceConfirmed: isPresenceConfirmed,
+      hasConflictingSignals: hasConflict,
+      isManualOverrideActive: isManualOverrideActive,
+      isCooldownActive: isCooldownActive,
+      cooldownRemaining: cooldownRemaining,
+      overrideRemaining: manualOverrideRemaining,
+    );
+
+    _latestContextResult = rawResult.copyWith(
+      context: stabilizedContext,
+      guardResult: guardResult,
+    );
   }
 
   /// DEMO MODE TRIGGER: Injects a deterministic sensor scenario.
-  /// Modifies actual sensor values, which flow through the real pipeline.
+  /// Pre-primes stabilization buffer so the demo transitions immediately and predictably.
   void injectScenario(MockScenario scenario) {
+    _contextHistory.clear();
+    _contextHistory.addAll(
+      List.filled(AppConstants.hysteresisWindowSize, scenario.targetContext),
+    );
+
     if (!_isHardwareMode) {
       _mockSensors.injectScenario(scenario, smoothTransition: true);
       // Sync mock BLE beacon state
@@ -143,6 +232,8 @@ class AutomationService extends ChangeNotifier {
     }
 
     _devices = updatedDevices;
+    _lastSceneAppliedTime = DateTime.now();
+    _manualOverrideUntil = null; // Reconcile device state with approved scene
 
     // Record immutable audit event in offline storage
     final event = AutomationEvent(
@@ -158,6 +249,9 @@ class AutomationService extends ChangeNotifier {
 
     await _storage.saveEvent(event);
     _history = _storage.getHistory();
+
+    // Re-evaluate context guard with active cooldown
+    await _evaluateContext(_latestSnapshot);
 
     // Subtle delay for visual confirmation of scene application
     await Future.delayed(const Duration(milliseconds: 350));
@@ -189,7 +283,7 @@ class AutomationService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Manual device control override
+  /// Manual device control override: Sets temporary override lock to respect user preference
   void updateDevice(
     String deviceId, {
     bool? isOn,
@@ -206,7 +300,52 @@ class AutomationService extends ChangeNotifier {
       }
       return device;
     }).toList();
+
+    // Activate manual override lease
+    _manualOverrideUntil = DateTime.now().add(
+      const Duration(seconds: AppConstants.manualOverrideDurationSeconds),
+    );
+
+    _syncGuardResult();
     notifyListeners();
+  }
+
+  /// Release manual override lock immediately
+  void clearManualOverride() {
+    _manualOverrideUntil = null;
+    _syncGuardResult();
+    notifyListeners();
+  }
+
+  /// Reset automation cooldown immediately (for tests and quick demos)
+  void resetCooldown() {
+    _lastSceneAppliedTime = null;
+    _syncGuardResult();
+    notifyListeners();
+  }
+
+  /// Synchronously re-evaluates the Context Guard using current state
+  void _syncGuardResult() {
+    final bool isPresenceConfirmed =
+        _latestSnapshot.homeBeaconDetected || _bleProvider.isHomeBeaconPresent;
+    final bool hasConflict = _latestContextResult.context ==
+            AmbientContextType.uncertain ||
+        (_latestSnapshot.homeBeaconDetected &&
+            _latestSnapshot.motionLevel == MotionLevel.high &&
+            _latestSnapshot.lightLux > 250.0);
+
+    final guardResult = _contextGuard.evaluate(
+      inferredContext: _latestContextResult.context,
+      confidence: _latestContextResult.confidence,
+      isPresenceConfirmed: isPresenceConfirmed,
+      hasConflictingSignals: hasConflict,
+      isManualOverrideActive: isManualOverrideActive,
+      isCooldownActive: isCooldownActive,
+      cooldownRemaining: cooldownRemaining,
+      overrideRemaining: manualOverrideRemaining,
+    );
+
+    _latestContextResult = _latestContextResult.copyWith(guardResult: guardResult);
   }
 
   /// Clear all automation logs

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sensaura_ai/core/constants/mock_scenarios.dart';
 import 'package:sensaura_ai/models/ambient_context.dart';
+import 'package:sensaura_ai/models/context_guard_result.dart';
 import 'package:sensaura_ai/services/automation_service.dart';
 
 void main() {
@@ -34,13 +35,18 @@ void main() {
       expect(service.latestContextResult.confidencePercentage, contains('9'));
       expect(service.latestContextResult.reasoning.toLowerCase(), contains('relaxation'));
 
-      // Step 9: Verify recommended scene is Relaxation Scene
+      // Step 9: Verify recommended scene is Relaxation Scene and Context Guard is AUTO_SAFE
       final recommendedScene = service.latestContextResult.recommendedScene;
       expect(recommendedScene.id, equals('scene_relaxation'));
+      expect(service.latestGuardResult.decision, equals(ContextGuardDecision.autoSafe));
 
       // Step 10 & 11: Apply Relaxation Scene
       final initialEventCount = service.history.length;
       await service.applyScene(recommendedScene, manual: true);
+
+      // Verify cooldown is now active
+      expect(service.isCooldownActive, isTrue);
+      expect(service.latestGuardResult.decision, equals(ContextGuardDecision.noAction));
 
       // Verify smart devices visibly updated
       final livingLight = service.devices.firstWhere((d) => d.id == 'light_living');
@@ -60,7 +66,8 @@ void main() {
       expect(latestEvent.contextName, contains('Relaxation'));
       expect(latestEvent.sceneName, contains('Relaxation Scene applied'));
 
-      // Step 13: Inject SIMULATE LEAVING
+      // Step 13: Reset cooldown and inject SIMULATE LEAVING
+      service.resetCooldown();
       service.injectScenario(MockScenarios.leaving);
       await Future.delayed(const Duration(milliseconds: 1400));
 
@@ -84,6 +91,30 @@ void main() {
       // Verify audit history has both events
       expect(service.history.length, equals(initialEventCount + 2));
       expect(service.history.first.contextName, contains('Leaving'));
+
+      // Step 16: Test UNCERTAIN Scenario & Context Guard NO_ACTION
+      service.resetCooldown();
+      service.injectScenario(MockScenarios.uncertain);
+      await Future.delayed(const Duration(milliseconds: 1400));
+
+      expect(service.latestContextResult.context, equals(AmbientContextType.uncertain));
+      expect(service.latestGuardResult.decision, equals(ContextGuardDecision.noAction));
+      expect(service.latestGuardResult.summary, contains('Conflicting signals'));
+
+      // Step 17: Test Manual Override Protection
+      service.injectScenario(MockScenarios.arrival);
+      await Future.delayed(const Duration(milliseconds: 1400));
+      service.resetCooldown();
+
+      // User manually overrides living light
+      service.updateDevice('light_living', primaryValue: 100);
+      expect(service.isManualOverrideActive, isTrue);
+      expect(service.latestGuardResult.decision, equals(ContextGuardDecision.noAction));
+      expect(service.latestGuardResult.summary, contains('Manual override'));
+
+      // User clears manual override
+      service.clearManualOverride();
+      expect(service.isManualOverrideActive, isFalse);
     });
   });
 }
