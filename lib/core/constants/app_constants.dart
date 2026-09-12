@@ -14,6 +14,13 @@ class AppConstants {
   static const double highMotionThreshold = 4.0;
   static const double focusMotionThreshold = 0.8;
 
+  // SensAura Context Guard Thresholds & Constants
+  static const double minConfidenceAutoSafe = 0.85;
+  static const double minConfidenceAskUser = 0.60;
+  static const int cooldownDurationSeconds = 45;
+  static const int manualOverrideDurationSeconds = 180;
+  static const int hysteresisWindowSize = 3;
+
   // BLE Beacon Identifiers
   static const String homeBeaconUuid = 'SENS-HOME-BEACON-01';
   static const String deskBeaconUuid = 'SENS-DESK-BEACON-02';

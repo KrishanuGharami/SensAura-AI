@@ -7,7 +7,8 @@ enum AmbientContextType {
   arriving,
   focus,
   sleep,
-  neutral;
+  neutral,
+  uncertain;
 
   String get displayName {
     switch (this) {
@@ -23,6 +24,8 @@ enum AmbientContextType {
         return 'Sleep Mode';
       case AmbientContextType.neutral:
         return 'Active Normal';
+      case AmbientContextType.uncertain:
+        return 'Uncertain Context';
     }
   }
 
@@ -40,6 +43,8 @@ enum AmbientContextType {
         return Icons.bedtime_rounded;
       case AmbientContextType.neutral:
         return Icons.sensors_rounded;
+      case AmbientContextType.uncertain:
+        return Icons.warning_amber_rounded;
     }
   }
 
@@ -57,6 +62,8 @@ enum AmbientContextType {
         return AppColors.electricViolet;
       case AmbientContextType.neutral:
         return AppColors.textSecondary;
+      case AmbientContextType.uncertain:
+        return AppColors.statusWarning;
     }
   }
 }
