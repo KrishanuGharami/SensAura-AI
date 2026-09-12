@@ -13,13 +13,17 @@ void main() {
     expect(find.text('SENSOR STREAM'), findsOneWidget);
     expect(find.text('BLE CONNECTED'), findsOneWidget);
 
+    // Verify Context Guard card
+    expect(find.text('SENSAURA CONTEXT GUARD'), findsOneWidget);
+
     // Verify suggested automation card
     expect(find.text('SUGGESTED AUTOMATION'), findsOneWidget);
-    expect(find.text('APPLY SCENE'), findsOneWidget);
+    expect(find.textContaining('APPLY SCENE'), findsOneWidget);
 
     // Verify simulation deck
     expect(find.text('DEMO SCENARIO INJECTION'), findsOneWidget);
     expect(find.text('RELAXATION'), findsOneWidget);
     expect(find.text('LEAVING'), findsOneWidget);
+    expect(find.text('UNCERTAIN'), findsOneWidget);
   });
 }

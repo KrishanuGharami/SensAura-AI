@@ -85,7 +85,7 @@ class AutomationService extends ChangeNotifier {
     if (_lastSceneAppliedTime == null) return null;
     final elapsed = DateTime.now().difference(_lastSceneAppliedTime!);
     final remaining =
-        Duration(seconds: AppConstants.cooldownDurationSeconds) - elapsed;
+        const Duration(seconds: AppConstants.cooldownDurationSeconds) - elapsed;
     return remaining.isNegative ? Duration.zero : remaining;
   }
 

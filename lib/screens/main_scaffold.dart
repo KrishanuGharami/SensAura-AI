@@ -57,6 +57,14 @@ class _MainScaffoldState extends State<MainScaffold> {
         onNavigateToSensors: () => setState(() => _currentIndex = 1),
         onNavigateToAi: () => setState(() => _currentIndex = 2),
         onNavigateToEnvironment: () => setState(() => _currentIndex = 3),
+        onClearOverride: () {
+          _automation.clearManualOverride();
+          _showFeedbackBanner('Manual device lock released');
+        },
+        onResetCooldown: () {
+          _automation.resetCooldown();
+          _showFeedbackBanner('Automation cooldown timer reset');
+        },
       ),
 
       // 2. Live Sensors
