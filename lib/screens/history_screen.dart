@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../core/theme/app_colors.dart';
+import '../l10n/app_localizations.dart';
 import '../models/automation_event.dart';
 
 class HistoryScreen extends StatelessWidget {
@@ -15,6 +16,8 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Column(
       children: [
         // Sub-header with count & clear button
@@ -28,7 +31,7 @@ class HistoryScreen extends StatelessWidget {
                   const Icon(Icons.history_rounded, size: 16, color: AppColors.cyberCyan),
                   const SizedBox(width: 8),
                   Text(
-                    'LOCAL AUDIT LOG (${events.length})',
+                    '${l10n?.localAuditLog ?? "LOCAL AUDIT LOG"} (${events.length})',
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -42,16 +45,16 @@ class HistoryScreen extends StatelessWidget {
                 InkWell(
                   onTap: () => _confirmClear(context),
                   borderRadius: BorderRadius.circular(6),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.delete_outline_rounded, size: 14, color: AppColors.dangerRed),
-                        SizedBox(width: 4),
+                        const Icon(Icons.delete_outline_rounded, size: 14, color: AppColors.dangerRed),
+                        const SizedBox(width: 4),
                         Text(
-                          'Clear',
-                          style: TextStyle(
+                          l10n?.clear ?? 'Clear',
+                          style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: AppColors.dangerRed,
@@ -68,7 +71,7 @@ class HistoryScreen extends StatelessWidget {
         // Events list
         Expanded(
           child: events.isEmpty
-              ? _buildEmptyState()
+              ? _buildEmptyState(context)
               : ListView.builder(
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -160,11 +163,22 @@ class HistoryScreen extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.emeraldGreen,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ),
             ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Reasoning description
+          Text(
+            event.reasoning,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
           ),
 
           if (event.sensorSummary.isNotEmpty) ...[
@@ -191,23 +205,24 @@ class HistoryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState() {
-    return const Center(
+  Widget _buildEmptyState(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 42, color: AppColors.textMuted),
-          SizedBox(height: 12),
+          const Icon(Icons.inventory_2_outlined, size: 42, color: AppColors.textMuted),
+          const SizedBox(height: 12),
           Text(
-            'No automation events yet',
-            style: TextStyle(
+            l10n?.historyEmpty ?? 'No automation events yet',
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
           ),
-          SizedBox(height: 4),
-          Text(
+          const SizedBox(height: 4),
+          const Text(
             'Injected scenarios and applied scenes will appear here',
             style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
@@ -217,11 +232,12 @@ class HistoryScreen extends StatelessWidget {
   }
 
   void _confirmClear(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.cardSurface,
-        title: const Text('Clear Automation Log?'),
+        title: Text('${l10n?.clearHistory ?? "Clear History"}?'),
         content: const Text('This will delete all local event history from device storage.'),
         actions: [
           TextButton(
@@ -234,7 +250,7 @@ class HistoryScreen extends StatelessWidget {
               onClearHistory();
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.dangerRed),
-            child: const Text('Clear', style: TextStyle(color: Colors.white)),
+            child: Text(l10n?.clear ?? 'Clear', style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),

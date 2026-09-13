@@ -6,6 +6,16 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      fontFamilyFallback: const [
+        'Noto Sans',
+        'Noto Sans Devanagari',
+        'Noto Sans Tamil',
+        'Noto Sans Telugu',
+        'Noto Sans Malayalam',
+        'Noto Sans Kannada',
+        'Roboto',
+        'sans-serif',
+      ],
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primaryAmber,
       colorScheme: const ColorScheme.dark(

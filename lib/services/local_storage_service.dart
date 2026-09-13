@@ -81,6 +81,33 @@ class LocalStorageService {
     }
   }
 
+  String? _memoryFallbackLocale;
+
+  /// Retrieve the saved UI locale code (e.g. 'en', 'hi', 'ta', 'te', 'ml', 'kn')
+  String? getSavedLocale() {
+    if (_historyBox != null && _historyBox!.isOpen) {
+      try {
+        final val = _historyBox!.get('app_selected_locale');
+        if (val is String && val.isNotEmpty) return val;
+      } catch (e) {
+        debugPrint('Error reading saved locale: $e');
+      }
+    }
+    return _memoryFallbackLocale;
+  }
+
+  /// Save user selected UI locale code
+  Future<void> saveLocale(String localeCode) async {
+    _memoryFallbackLocale = localeCode;
+    if (_historyBox != null && _historyBox!.isOpen) {
+      try {
+        await _historyBox!.put('app_selected_locale', localeCode);
+      } catch (e) {
+        debugPrint('Error saving locale: $e');
+      }
+    }
+  }
+
   /// Clear all history logs
   Future<void> clearHistory() async {
     _memoryFallbackHistory.clear();

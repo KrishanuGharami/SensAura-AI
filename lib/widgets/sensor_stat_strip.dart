@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
+import '../l10n/app_localizations.dart';
 import '../models/sensor_snapshot.dart';
 
 class SensorStatStrip extends StatelessWidget {
@@ -14,6 +15,8 @@ class SensorStatStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -30,7 +33,7 @@ class SensorStatStrip extends StatelessWidget {
               child: _buildItem(
                 icon: Icons.light_mode_rounded,
                 iconColor: AppColors.warmGold,
-                label: 'Light',
+                label: l10n?.sensorLight ?? 'Light',
                 value: '${snapshot.lightLux.toStringAsFixed(0)} lux',
               ),
             ),
@@ -39,7 +42,7 @@ class SensorStatStrip extends StatelessWidget {
               child: _buildItem(
                 icon: Icons.vibration_rounded,
                 iconColor: AppColors.cyberCyan,
-                label: 'Motion',
+                label: l10n?.sensorMotion ?? 'Motion',
                 value: snapshot.motionLevel.displayName.replaceAll(' Motion', ''),
               ),
             ),
@@ -57,7 +60,7 @@ class SensorStatStrip extends StatelessWidget {
               child: _buildItem(
                 icon: Icons.sensors_rounded,
                 iconColor: snapshot.proximityNear ? AppColors.emeraldGreen : AppColors.textMuted,
-                label: 'Proximity',
+                label: l10n?.sensorProximity ?? 'Proximity',
                 value: snapshot.proximityNear ? 'Near' : 'Far',
               ),
             ),

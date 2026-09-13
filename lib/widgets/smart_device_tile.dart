@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
+import '../l10n/app_localizations.dart';
 import '../models/smart_device.dart';
 
 class SmartDeviceTile extends StatelessWidget {
@@ -16,6 +17,7 @@ class SmartDeviceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isOn = device.isOn;
     final color = _getDeviceAccentColor(device.type, isOn);
 
@@ -109,7 +111,7 @@ class SmartDeviceTile extends StatelessWidget {
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Text(
-                    isOn ? '${device.primaryValue}' : 'OFF',
+                    isOn ? '${device.primaryValue}' : (l10n?.stateOff ?? 'OFF'),
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -138,7 +140,7 @@ class SmartDeviceTile extends StatelessWidget {
                   border: Border.all(color: AppColors.borderSubtle),
                 ),
                 child: Text(
-                  isOn ? device.secondaryStatus : 'Standby',
+                  isOn ? device.secondaryStatus : (l10n?.stateStandby ?? 'Standby'),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -187,6 +189,8 @@ class SmartDeviceTile extends StatelessWidget {
         return AppColors.electricViolet;
       case DeviceType.plug:
         return AppColors.primaryAmber;
+      case DeviceType.workstation:
+        return AppColors.cyberCyan;
     }
   }
 

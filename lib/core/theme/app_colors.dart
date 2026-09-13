@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 class AppColors {
   // Backgrounds
   static const Color background = Color(0xFF090C10);
+  static const Color backgroundDark = background;
   static const Color backgroundSecondary = Color(0xFF0E131B);
   static const Color cardSurface = Color(0xFF141923);
+  static const Color surfaceCard = cardSurface;
   static const Color cardSurfaceElevated = Color(0xFF1B2230);
   static const Color borderSubtle = Color(0xFF232B3C);
   static const Color borderActive = Color(0xFF3B4863);
@@ -17,12 +19,14 @@ class AppColors {
   static const Color electricViolet = Color(0xFF8B5CF6);
   static const Color emeraldGreen = Color(0xFF10B981);
   static const Color warmGold = Color(0xFFF59E0B);
+  static const Color neonYellow = warmGold;
   static const Color dangerRed = Color(0xFFEF4444);
 
   // Typography
   static const Color textPrimary = Color(0xFFF1F5F9);
   static const Color textSecondary = Color(0xFF94A3B8);
   static const Color textMuted = Color(0xFF64748B);
+  static const Color textTertiary = Color(0xFF64748B);
   static const Color textHighlight = Color(0xFFFFFFFF);
 
   // Status Colors

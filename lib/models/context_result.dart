@@ -51,17 +51,19 @@ class ContextResult {
   factory ContextResult.initial() {
     return ContextResult(
       context: AmbientContextType.neutral,
-      confidence: 0.85,
-      reasoning: 'Standard daytime ambient light and normal movement detected.',
-      detectedSignals: const [
-        'Moderate indoor light (~120 lux)',
-        'Low motion profile',
-        'Home BLE beacon connected',
-      ],
+      confidence: 0.0,
+      reasoning: 'Waiting for fresh sensor telemetry.',
+      detectedSignals: const ['No fresh telemetry available'],
       recommendedScene: AutomationScene.neutral,
-      inferenceLatencyMs: 0.9,
+      inferenceLatencyMs: 0.0,
       evaluatedAt: DateTime.now(),
-      guardResult: ContextGuardResult.initial(),
+      guardResult: const ContextGuardResult(
+        decision: ContextGuardDecision.noAction,
+        summary: 'Automation paused: Waiting for telemetry',
+        explanation: 'No fresh sensor snapshot is available yet.',
+        checks: [],
+        isSafeToApply: false,
+      ),
     );
   }
 }

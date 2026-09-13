@@ -10,19 +10,31 @@ void main() {
     // Verify top status elements
     expect(find.text('SensAura AI'), findsOneWidget);
     expect(find.text('LOCAL'), findsOneWidget);
-    expect(find.text('SENSOR STREAM'), findsOneWidget);
-    expect(find.text('BLE CONNECTED'), findsOneWidget);
+    expect(
+      find.text('SENSOR STREAM').evaluate().length +
+          find.text('SENSOR UNAVAILABLE').evaluate().length,
+      1,
+    );
+    expect(
+      find.text('BLE CONNECTED').evaluate().length +
+          find.text('BLE UNAVAILABLE').evaluate().length,
+      1,
+    );
 
     // Verify Context Guard card
     expect(find.text('SENSAURA CONTEXT GUARD'), findsOneWidget);
 
     // Verify suggested automation card
     expect(find.text('SUGGESTED AUTOMATION'), findsOneWidget);
-    expect(find.textContaining('APPLY SCENE'), findsOneWidget);
+    expect(
+      find.textContaining('APPLY SCENE').evaluate().isNotEmpty ||
+          find.textContaining('PAUSED').evaluate().isNotEmpty,
+      isTrue,
+    );
 
     // Verify simulation deck
     expect(find.text('DEMO SCENARIO INJECTION'), findsOneWidget);
-    expect(find.text('RELAXATION'), findsOneWidget);
+    expect(find.text('REST'), findsOneWidget);
     expect(find.text('LEAVING'), findsOneWidget);
     expect(find.text('UNCERTAIN'), findsOneWidget);
   });

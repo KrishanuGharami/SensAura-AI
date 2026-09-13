@@ -7,15 +7,17 @@ import '../models/context_guard_result.dart';
 /// Deterministic safety layer preventing unsafe, jittery, or conflicting automation.
 /// Evaluates:
 /// - Inferred Context
-/// - Confidence Score
+/// - Confidence Score (minAuto: 0.85, minAsk: 0.60)
 /// - Physical / Beacon Presence
 /// - Signal Consistency (Conflict Detection)
-/// - Manual User Override lease
-/// - Automation Cooldown timer
+/// - Manual User Override Lease (180s)
+/// - Automation Cooldown Timer (45s)
+/// - Actuator Reachability (SensAura Node Workstation / BLE GATT)
+/// - Sensor Telemetry Freshness (Stale check)
 class ContextGuard {
   const ContextGuard();
 
-  /// Evaluates current environment parameters and outputs a deterministic safety decision:
+  /// Evaluates environment parameters and outputs a deterministic safety decision:
   /// [ContextGuardDecision.autoSafe], [ContextGuardDecision.askUser], or [ContextGuardDecision.noAction].
   ContextGuardResult evaluate({
     required AmbientContextType inferredContext,
@@ -24,16 +26,19 @@ class ContextGuard {
     required bool hasConflictingSignals,
     required bool isManualOverrideActive,
     required bool isCooldownActive,
+    bool isAutomationPausedByGesture = false,
+    bool isActuatorAvailable = true,
+    bool isSensorTelemetryFresh = true,
     Duration? cooldownRemaining,
     Duration? overrideRemaining,
   }) {
     final checks = <ContextGuardCheck>[
       ContextGuardCheck(
-        label: 'Presence confirmed',
+        label: 'Presence verified',
         passed: isPresenceConfirmed,
         detail: isPresenceConfirmed
-            ? 'Home BLE beacon presence verified'
-            : 'Home BLE beacon unconfirmed',
+            ? 'Workstation BLE beacon verified'
+            : 'Workstation presence unconfirmed',
       ),
       ContextGuardCheck(
         label: 'No manual override',
@@ -57,21 +62,75 @@ class ContextGuard {
             : 'Cooldown expired (ready)',
       ),
       ContextGuardCheck(
+        label: 'Actuator available',
+        passed: isActuatorAvailable,
+        detail: isActuatorAvailable
+            ? 'Workstation Node / BLE ready'
+            : 'No connected actuator reachable',
+      ),
+      ContextGuardCheck(
+        label: 'Sensors fresh',
+        passed: isSensorTelemetryFresh,
+        detail: isSensorTelemetryFresh
+            ? 'Real-time telemetry streaming'
+            : 'Telemetry stale (>10s without update)',
+      ),
+      ContextGuardCheck(
         label: 'Confidence threshold',
         passed: confidence >= AppConstants.minConfidenceAutoSafe,
         detail: '${(confidence * 100).toStringAsFixed(0)}% (Auto >= ${(AppConstants.minConfidenceAutoSafe * 100).toStringAsFixed(0)}%, Ask >= ${(AppConstants.minConfidenceAskUser * 100).toStringAsFixed(0)}%)',
+      ),
+      ContextGuardCheck(
+        label: 'Gesture safety',
+        passed: !isAutomationPausedByGesture,
+        detail: isAutomationPausedByGesture
+            ? 'Automation paused by user gesture (✋ Open Palm)'
+            : 'No gesture pause requested',
       ),
     ];
 
     // =========================================================================
     // 1. NO_ACTION RULE EVALUATION:
-    // confidence < 0.60 OR conflicting signals OR manual override active OR cooldown active
+    // User Gesture Pause takes immediate protective priority
     // =========================================================================
+    if (isAutomationPausedByGesture) {
+      return ContextGuardResult(
+        decision: ContextGuardDecision.noAction,
+        summary: 'Automation paused: User gesture (✋ Open Palm)',
+        explanation: 'User explicitly presented an Open Palm gesture to lock the space. Automation remains paused until resumed.',
+        checks: checks,
+        isSafeToApply: false,
+        evaluatedAt: DateTime.now(),
+      );
+    }
+
+    if (!isSensorTelemetryFresh) {
+      return ContextGuardResult(
+        decision: ContextGuardDecision.noAction,
+        summary: 'Automation paused: Stale sensor telemetry',
+        explanation: 'Sensor readings have not refreshed in over 10 seconds. Automation is paused to avoid acting on outdated environmental data.',
+        checks: checks,
+        isSafeToApply: false,
+        evaluatedAt: DateTime.now(),
+      );
+    }
+
+    if (!isActuatorAvailable) {
+      return ContextGuardResult(
+        decision: ContextGuardDecision.noAction,
+        summary: 'Automation paused: Actuator unreachable',
+        explanation: 'Neither SensAura Node (Laptop Workstation) nor a compatible BLE GATT device is currently connected to receive commands.',
+        checks: checks,
+        isSafeToApply: false,
+        evaluatedAt: DateTime.now(),
+      );
+    }
+
     if (isManualOverrideActive) {
       return ContextGuardResult(
         decision: ContextGuardDecision.noAction,
         summary: 'Automation paused: Manual override active',
-        explanation: 'User recently adjusted smart devices manually. Automated changes are paused to respect user control.',
+        explanation: 'User recently adjusted smart devices manually (workstation override). Automated changes are paused to respect direct user control.',
         checks: checks,
         isSafeToApply: false,
         evaluatedAt: DateTime.now(),
@@ -82,7 +141,7 @@ class ContextGuard {
       return ContextGuardResult(
         decision: ContextGuardDecision.noAction,
         summary: 'Automation paused: Cooldown active',
-        explanation: 'A scene was recently executed. Cooldown is active to prevent repeated or fluttering device state updates.',
+        explanation: 'An automation scene was recently executed. Cooldown is active to prevent repeated or fluttering actuator commands.',
         checks: checks,
         isSafeToApply: false,
         evaluatedAt: DateTime.now(),
@@ -93,7 +152,7 @@ class ContextGuard {
       return ContextGuardResult(
         decision: ContextGuardDecision.noAction,
         summary: 'Automation paused: Conflicting signals',
-        explanation: 'Automation paused because signals conflict (e.g. transit-level motion while beacon indicates home presence).',
+        explanation: 'Automation paused because sensory telemetry signals conflict with contradictory physical cues.',
         checks: checks,
         isSafeToApply: false,
         evaluatedAt: DateTime.now(),
@@ -114,13 +173,13 @@ class ContextGuard {
     // =========================================================================
     // 2. AUTO_SAFE RULE EVALUATION:
     // confidence >= 0.85 AND presence confirmed AND no manual override
-    // AND no conflicting signals AND cooldown expired
+    // AND no conflicting signals AND cooldown expired AND actuator available AND fresh
     // =========================================================================
     if (confidence >= AppConstants.minConfidenceAutoSafe && isPresenceConfirmed) {
       return ContextGuardResult(
         decision: ContextGuardDecision.autoSafe,
         summary: 'Safe for automated execution',
-        explanation: 'High confidence (${(confidence * 100).toStringAsFixed(0)}%) with confirmed beacon presence and coherent sensory telemetry.',
+        explanation: 'High confidence (${(confidence * 100).toStringAsFixed(0)}%) with confirmed workstation presence, coherent telemetry, and verified actuator.',
         checks: checks,
         isSafeToApply: true,
         evaluatedAt: DateTime.now(),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
+import '../l10n/app_localizations.dart';
 import '../models/sensor_snapshot.dart';
 import '../services/ble_provider.dart';
 import '../widgets/ble_radar_view.dart';
@@ -10,6 +11,7 @@ class LiveSensorsScreen extends StatelessWidget {
   final List<BleDeviceInfo> bleDevices;
   final double latencyMs;
   final bool isHardware;
+  final bool hardwareAvailable;
   final ValueChanged<bool> onToggleHardware;
 
   const LiveSensorsScreen({
@@ -18,6 +20,7 @@ class LiveSensorsScreen extends StatelessWidget {
     required this.bleDevices,
     required this.latencyMs,
     required this.isHardware,
+    required this.hardwareAvailable,
     required this.onToggleHardware,
   });
 
@@ -29,37 +32,47 @@ class LiveSensorsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Source switcher banner
-          _buildHardwareToggleBanner(),
+          // 0. Hardware Mode Banner
+          _buildHardwareToggleBanner(context),
 
           const SizedBox(height: 14),
 
-          // 1. Accelerometer 3-Axis Live Waveform
+          // 1. Hardware Silicon Availability Strip
+          _buildHardwareStatusStrip(),
+
+          const SizedBox(height: 14),
+
+          // 2. Accelerometer 3-Axis Live Waveform
           SensorWaveformCard(
             snapshot: snapshot,
             latencyMs: latencyMs,
-            isHardware: isHardware,
+            isHardware: isHardware && hardwareAvailable,
           ),
 
           const SizedBox(height: 14),
 
-          // 2. Ambient Light & Proximity Dual Grid
+          // 3. Gyroscope 3-Axis Angular Velocity Card
+          _buildGyroscopeCard(),
+
+          const SizedBox(height: 14),
+
+          // 4. Ambient Light & Proximity Dual Grid
           Row(
             children: [
-              Expanded(child: _buildLightCard()),
+              Expanded(child: _buildLightCard(context)),
               const SizedBox(width: 12),
-              Expanded(child: _buildProximityCard()),
+              Expanded(child: _buildProximityCard(context)),
             ],
           ),
 
           const SizedBox(height: 14),
 
-          // 3. BLE Spatial Radar & Beacon List
+          // 5. BLE Spatial Radar & Beacon List
           BleRadarView(devices: bleDevices),
 
           const SizedBox(height: 14),
 
-          // 4. On-Device Edge Processing Telemetry
+          // 6. On-Device Edge Processing Telemetry
           _buildEdgeTelemetryCard(),
 
           const SizedBox(height: 24),
@@ -68,13 +81,19 @@ class LiveSensorsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHardwareToggleBanner() {
+  Widget _buildHardwareToggleBanner(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final liveHardwareAvailable = isHardware && hardwareAvailable;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.cardSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(
+          color: liveHardwareAvailable
+              ? AppColors.emeraldGreen.withValues(alpha: 0.4)
+              : AppColors.primaryAmber.withValues(alpha: 0.4),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -82,50 +101,96 @@ class LiveSensorsScreen extends StatelessWidget {
           Row(
             children: [
               Icon(
-                isHardware ? Icons.developer_board_rounded : Icons.science_rounded,
+                liveHardwareAvailable
+                    ? Icons.developer_board_rounded
+                    : Icons.science_rounded,
                 size: 18,
-                color: isHardware ? AppColors.emeraldGreen : AppColors.primaryAmber,
+                color: liveHardwareAvailable
+                    ? AppColors.emeraldGreen
+                    : AppColors.primaryAmber,
               ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isHardware ? 'Hardware Sensors Active' : 'Simulation Engine Active',
-                    style: const TextStyle(
+                    liveHardwareAvailable
+                        ? '${l10n?.liveHardware ?? "LIVE HARDWARE"} (iQOO 15)'
+                        : isHardware
+                            ? '${l10n?.liveHardware ?? "LIVE HARDWARE"} (${l10n?.stateUnavailable ?? "UNAVAILABLE"})'
+                            : '${l10n?.demoSimulation ?? "DEMO SIMULATION"} (Dev Tool)',
+                    style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: liveHardwareAvailable
+                          ? AppColors.emeraldGreen
+                          : AppColors.primaryAmber,
                     ),
                   ),
                   Text(
-                    isHardware
-                        ? 'Using on-board IMU & Bluetooth radio'
-                        : 'Feeding deterministic live test telemetry',
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      color: AppColors.textMuted,
-                    ),
+                    liveHardwareAvailable
+                        ? 'Direct silicon sensor streams active'
+                        : isHardware
+                            ? 'No supported sensor telemetry detected'
+                            : 'Virtual physics scenario modeler',
+                    style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
                   ),
                 ],
               ),
             ],
           ),
-          Switch(
+          Switch.adaptive(
             value: isHardware,
             onChanged: onToggleHardware,
             activeThumbColor: AppColors.emeraldGreen,
-            activeTrackColor: AppColors.emeraldGreen.withValues(alpha: 0.3),
+            inactiveTrackColor: AppColors.cardSurfaceElevated,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLightCard() {
-    final lux = snapshot.lightLux;
-    final isDim = lux < 35.0;
+  Widget _buildHardwareStatusStrip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceCard,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildSensorChip('IMU Accel', snapshot.hasAccel),
+          _buildSensorChip('Gyroscope', snapshot.hasGyro),
+          _buildSensorChip('Light (Lux)', snapshot.hasLight),
+          _buildSensorChip('Proximity', snapshot.hasProximity),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildSensorChip(String label, bool isAvailable) {
+    final color = isAvailable ? AppColors.emeraldGreen : AppColors.textMuted;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.circle, color: color, size: 6),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: isAvailable ? AppColors.textPrimary : AppColors.textMuted,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGyroscopeCard() {
+    final gyroMag = snapshot.gyroMagnitude;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -139,64 +204,89 @@ class LiveSensorsScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'AMBIENT LIGHT',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.8,
-                  color: AppColors.warmGold,
-                ),
+              const Row(
+                children: [
+                  Icon(Icons.screen_rotation_rounded, size: 16, color: AppColors.cyberCyan),
+                  SizedBox(width: 8),
+                  Text(
+                    'GYROSCOPE ANGULAR RATE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                      color: AppColors.cyberCyan,
+                    ),
+                  ),
+                ],
               ),
-              Icon(
-                isDim ? Icons.nightlight_round : Icons.wb_sunny_rounded,
-                size: 16,
-                color: AppColors.warmGold,
+              Text(
+                '|ω| = ${gyroMag.toStringAsFixed(2)} rad/s',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            lux.toStringAsFixed(0),
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textHighlight,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const Text(
-            'lux illumination',
-            style: TextStyle(fontSize: 10, color: AppColors.textMuted),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: isDim
-                  ? AppColors.primaryAmber.withValues(alpha: 0.15)
-                  : AppColors.cyberCyan.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              isDim ? 'DIM / EVENING' : 'DAY / WORKSPACE',
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                color: isDim ? AppColors.primaryAmber : AppColors.cyberCyan,
-              ),
-            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildAxisStat('ωX', snapshot.gyroX)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildAxisStat('ωY', snapshot.gyroY)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildAxisStat('ωZ', snapshot.gyroZ)),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProximityCard() {
-    final isNear = snapshot.proximityNear;
+  Widget _buildAxisStat(String label, double val) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.cardSurfaceElevated,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          Text(
+            '${val >= 0 ? "+" : ""}${val.toStringAsFixed(2)}',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLightCard(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final lux = snapshot.lightLux;
+    String lightContext;
+    Color lightColor;
+
+    if (lux < 5.0) {
+      lightContext = 'Dark / Night Rest';
+      lightColor = AppColors.electricViolet;
+    } else if (lux < 40.0) {
+      lightContext = 'Dim / Rest Profile';
+      lightColor = AppColors.primaryAmber;
+    } else if (lux <= 450.0) {
+      lightContext = 'Workspace Focus';
+      lightColor = AppColors.cyberCyan;
+    } else {
+      lightContext = 'Bright / Direct Sunlight';
+      lightColor = AppColors.neonYellow;
+    }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.cardSurface,
         borderRadius: BorderRadius.circular(16),
@@ -205,19 +295,79 @@ class LiveSensorsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'PROXIMITY',
-                style: TextStyle(
+                l10n?.sensorLight != null ? l10n!.sensorLight.toUpperCase() : 'AMBIENT LIGHT',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                  color: AppColors.primaryAmber,
+                ),
+              ),
+              const Icon(Icons.light_mode_rounded, size: 16, color: AppColors.primaryAmber),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                lux.toStringAsFixed(0),
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Text('lux', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            lightContext,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: lightColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProximityCard(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final isNear = snapshot.proximityNear;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                l10n?.sensorProximity != null ? l10n!.sensorProximity.toUpperCase() : 'PROXIMITY',
+                style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.8,
                   color: AppColors.cyberCyan,
                 ),
               ),
-              Icon(Icons.sensors_rounded, size: 16, color: AppColors.cyberCyan),
+              const Icon(Icons.sensors_rounded, size: 16, color: AppColors.cyberCyan),
             ],
           ),
           const SizedBox(height: 10),
@@ -231,25 +381,16 @@ class LiveSensorsScreen extends StatelessWidget {
             ),
           ),
           Text(
-            isNear ? '< 5 cm (Obstructed)' : '> 15 cm (Open air)',
+            isNear ? '< 5 cm (Covered/Docked)' : '> 10 cm (Open air)',
             style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
           ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: isNear
-                  ? AppColors.emeraldGreen.withValues(alpha: 0.15)
-                  : AppColors.cardSurfaceElevated,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              isNear ? 'FACE DOWN / COUCH' : 'DESK / IN HAND',
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                color: isNear ? AppColors.emeraldGreen : AppColors.textMuted,
-              ),
+          const SizedBox(height: 4),
+          Text(
+            isNear ? 'Docked at Desk' : 'In Hand / Free',
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: isNear ? AppColors.emeraldGreen : AppColors.textSecondary,
             ),
           ),
         ],
@@ -290,7 +431,7 @@ class LiveSensorsScreen extends StatelessWidget {
                 child: _buildMetricTile(
                   'INFERENCE LATENCY',
                   '${latencyMs.toStringAsFixed(1)} ms',
-                  'Sub-2ms target met',
+                  'Measured local execution',
                   AppColors.emeraldGreen,
                 ),
               ),
@@ -299,7 +440,7 @@ class LiveSensorsScreen extends StatelessWidget {
                 child: _buildMetricTile(
                   'CLOUD ROUNDTRIP',
                   '0.0 ms',
-                  '100% Offline processing',
+                  'No network inference',
                   AppColors.cyberCyan,
                 ),
               ),

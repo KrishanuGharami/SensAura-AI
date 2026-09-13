@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import '../core/constants/mock_scenarios.dart';
 import '../core/theme/app_colors.dart';
+import '../l10n/app_localizations.dart';
 import '../models/ambient_context.dart';
 import '../models/automation_scene.dart';
 import '../models/context_guard_result.dart';
 import '../models/context_result.dart';
 import '../models/sensor_snapshot.dart';
 import '../widgets/context_hero_card.dart';
+import '../widgets/privacy_status_card.dart';
 import '../widgets/sensor_stat_strip.dart';
 import '../widgets/simulation_control_panel.dart';
 
@@ -38,6 +40,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final recommendedScene = contextResult.recommendedScene;
 
     return SingleChildScrollView(
@@ -50,6 +53,68 @@ class HomeScreen extends StatelessWidget {
           ContextHeroCard(
             result: contextResult,
             onTapDetails: onNavigateToAi,
+          ),
+
+          const SizedBox(height: 12),
+
+          // Connected Hardware & Privacy Badge Strip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.cardSurface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.borderSubtle),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GestureDetector(
+                  onTap: onNavigateToEnvironment,
+                  child: const Row(
+                    children: [
+                      Icon(Icons.circle, color: AppColors.emeraldGreen, size: 7),
+                      SizedBox(width: 4),
+                      Text('iQOO 15', style: TextStyle(color: AppColors.textPrimary, fontSize: 10.5, fontWeight: FontWeight.bold)),
+                      SizedBox(width: 7),
+                      Icon(Icons.circle, color: AppColors.cyberCyan, size: 7),
+                      SizedBox(width: 4),
+                      Text('Node', style: TextStyle(color: AppColors.textPrimary, fontSize: 10.5, fontWeight: FontWeight.bold)),
+                      SizedBox(width: 7),
+                      Icon(Icons.circle, color: AppColors.primaryAmber, size: 7),
+                      SizedBox(width: 4),
+                      Text('Demo Space', style: TextStyle(color: AppColors.textPrimary, fontSize: 10.5, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.cyberCyan.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        l10n?.rulesLocal ?? 'RULES: LOCAL',
+                        style: const TextStyle(color: AppColors.cyberCyan, fontSize: 9.5, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.emeraldGreen.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        l10n?.privacyLocalOnly ?? 'PRIVACY: LOCAL ONLY',
+                        style: const TextStyle(color: AppColors.emeraldGreen, fontSize: 9.5, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
 
           const SizedBox(height: 14),
@@ -72,7 +137,12 @@ class HomeScreen extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // 5. Deterministic Demo Simulation Controls
+          // 5. Verified Local Privacy Status Card
+          const PrivacyStatusCard(),
+
+          const SizedBox(height: 18),
+
+          // 6. Deterministic Demo Simulation Controls (Developer Diagnostics)
           SimulationControlPanel(
             currentContext: contextResult.context,
             onSelectScenario: onInjectScenario,
@@ -86,6 +156,7 @@ class HomeScreen extends StatelessWidget {
 
   /// Context Guard Safety & Explainability Card
   Widget _buildContextGuardExplainabilityCard(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final guard = contextResult.guardResult;
     final decision = guard.decision;
     final color = decision.color;
@@ -120,9 +191,9 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.shield_outlined, size: 16, color: color),
                   const SizedBox(width: 8),
-                  const Text(
-                    'SENSAURA CONTEXT GUARD',
-                    style: TextStyle(
+                  Text(
+                    l10n?.contextGuardTitle ?? 'SENSAURA CONTEXT GUARD',
+                    style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8,
@@ -144,7 +215,7 @@ class HomeScreen extends StatelessWidget {
                     Icon(decision.iconData, size: 12, color: color),
                     const SizedBox(width: 4),
                     Text(
-                      decision.userBadge,
+                      decision.getLocalizedUserBadge(l10n),
                       style: TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
@@ -173,7 +244,7 @@ class HomeScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${contextResult.context.displayName.toUpperCase()} detected with ${contextResult.confidencePercentage} confidence.',
+                  '${contextResult.context.getLocalizedName(l10n).toUpperCase()} • ${contextResult.confidencePercentage} ${l10n?.confidence ?? "Confidence"}',
                   style: const TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
@@ -206,9 +277,9 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'SIGNALS DETECTED',
-                      style: TextStyle(
+                    Text(
+                      l10n?.signalsDetected ?? 'SIGNALS DETECTED',
+                      style: const TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.5,
@@ -256,9 +327,9 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'GUARD SAFETY CHECKS',
-                      style: TextStyle(
+                    Text(
+                      l10n?.guardSafetyChecks ?? 'GUARD SAFETY CHECKS',
+                      style: const TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.5,
@@ -328,11 +399,11 @@ class HomeScreen extends StatelessWidget {
                   if (guard.summary.contains('Manual override') && onClearOverride != null)
                     InkWell(
                       onTap: onClearOverride,
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                         child: Text(
-                          'Release Lock',
-                          style: TextStyle(
+                          l10n?.releaseLock ?? 'Release Lock',
+                          style: const TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w700,
                             color: AppColors.cyberCyan,
@@ -343,11 +414,11 @@ class HomeScreen extends StatelessWidget {
                   if (guard.summary.contains('Cooldown') && onResetCooldown != null)
                     InkWell(
                       onTap: onResetCooldown,
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                         child: Text(
-                          'Reset Timer',
-                          style: TextStyle(
+                          l10n?.resetTimer ?? 'Reset Timer',
+                          style: const TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w700,
                             color: AppColors.primaryAmber,
@@ -365,38 +436,39 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildSuggestedAutomationCard(BuildContext context, AutomationScene scene) {
+    final l10n = AppLocalizations.of(context);
     final accentColor = contextResult.context.color;
     final guard = contextResult.guardResult;
     final decision = guard.decision;
 
     // Dynamic button label and styling based on Context Guard
-    String buttonText = 'APPLY SCENE';
+    String buttonText = l10n?.actionApply ?? 'APPLY SCENE';
     Color buttonColor = AppColors.primaryAmber;
     IconData buttonIcon = Icons.check_circle_rounded;
 
     if (decision == ContextGuardDecision.autoSafe) {
-      buttonText = 'APPLY SCENE (AUTO SAFE)';
+      buttonText = '${l10n?.actionApply ?? "APPLY SCENE"} (${l10n?.guardActionSafe ?? "AUTO SAFE"})';
       buttonColor = AppColors.emeraldGreen;
       buttonIcon = Icons.verified_user_rounded;
     } else if (decision == ContextGuardDecision.askUser) {
-      buttonText = 'APPLY SCENE (USER APPROVAL)';
+      buttonText = '${l10n?.actionApply ?? "APPLY SCENE"} (${l10n?.guardConfirmationRequired ?? "USER APPROVAL"})';
       buttonColor = AppColors.primaryAmber;
       buttonIcon = Icons.touch_app_rounded;
     } else {
       if (contextResult.context == AmbientContextType.uncertain) {
-        buttonText = 'PAUSED • SIGNALS CONFLICT';
+        buttonText = l10n?.signalsConflict ?? 'PAUSED • SIGNALS CONFLICT';
         buttonIcon = Icons.warning_amber_rounded;
         buttonColor = AppColors.dangerRed;
       } else if (guard.summary.contains('Manual override')) {
-        buttonText = 'PAUSED • MANUAL OVERRIDE';
+        buttonText = l10n?.guardManualOverride ?? 'PAUSED • MANUAL OVERRIDE';
         buttonIcon = Icons.lock_clock_rounded;
         buttonColor = AppColors.textMuted;
       } else if (guard.summary.contains('Cooldown')) {
-        buttonText = 'PAUSED • COOLDOWN ACTIVE';
+        buttonText = l10n?.guardCooldownActive ?? 'PAUSED • COOLDOWN ACTIVE';
         buttonIcon = Icons.timer_outlined;
         buttonColor = AppColors.textMuted;
       } else {
-        buttonText = 'PAUSED • LOW CONFIDENCE';
+        buttonText = l10n?.guardLowConfidence ?? 'PAUSED • LOW CONFIDENCE';
         buttonIcon = Icons.shield_outlined;
         buttonColor = AppColors.textMuted;
       }
@@ -417,13 +489,13 @@ class HomeScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.bolt_rounded, size: 16, color: AppColors.primaryAmber),
-                  SizedBox(width: 8),
+                  const Icon(Icons.bolt_rounded, size: 16, color: AppColors.primaryAmber),
+                  const SizedBox(width: 8),
                   Text(
-                    'SUGGESTED AUTOMATION',
-                    style: TextStyle(
+                    l10n?.suggestedAutomation ?? 'SUGGESTED AUTOMATION',
+                    style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8,
@@ -434,9 +506,9 @@ class HomeScreen extends StatelessWidget {
               ),
               InkWell(
                 onTap: onNavigateToEnvironment,
-                child: const Text(
-                  'View Devices >',
-                  style: TextStyle(
+                child: Text(
+                  l10n?.viewDevices ?? 'View Devices >',
+                  style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: AppColors.cyberCyan,
@@ -492,7 +564,7 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 14),
 
           // Target device chips
-          _buildTargetDeviceChips(scene),
+          _buildTargetDeviceChips(context, scene),
 
           const SizedBox(height: 16),
 
@@ -541,32 +613,40 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTargetDeviceChips(AutomationScene scene) {
+  Widget _buildTargetDeviceChips(BuildContext context, AutomationScene scene) {
+    final l10n = AppLocalizations.of(context);
     final targets = scene.targetStates;
     final List<Widget> chips = [];
+
+    final lightText = l10n?.smartLight ?? 'Light';
+    final acText = l10n != null ? l10n.airConditioner.split(' ').first : 'AC';
+    final speakerText = l10n?.speaker ?? 'Speaker';
+    final plugText = l10n?.smartSocket ?? 'Plug';
+    final offText = l10n?.stateOff ?? 'OFF';
+    final onText = l10n?.stateOn ?? 'ON';
 
     if (targets.containsKey('light_living')) {
       final light = targets['light_living'] as Map<String, dynamic>;
       final bool on = light['isOn'] as bool? ?? false;
-      chips.add(_buildActionPill('Light ${on ? "${light['brightness']}%" : "OFF"}', Icons.lightbulb_outline));
+      chips.add(_buildActionPill('$lightText ${on ? "${light['brightness']}%" : offText}', Icons.lightbulb_outline));
     }
 
     if (targets.containsKey('ac_living')) {
       final ac = targets['ac_living'] as Map<String, dynamic>;
       final bool on = ac['isOn'] as bool? ?? false;
-      chips.add(_buildActionPill('AC ${on ? "${ac['temperature']}°C" : "OFF"}', Icons.ac_unit_rounded));
+      chips.add(_buildActionPill('$acText ${on ? "${ac['temperature']}°C" : offText}', Icons.ac_unit_rounded));
     }
 
     if (targets.containsKey('speaker_living')) {
       final spk = targets['speaker_living'] as Map<String, dynamic>;
       final bool on = spk['isOn'] as bool? ?? false;
-      chips.add(_buildActionPill('Speaker ${on ? "${spk['volume']}%" : "OFF"}', Icons.speaker_rounded));
+      chips.add(_buildActionPill('$speakerText ${on ? "${spk['volume']}%" : offText}', Icons.speaker_rounded));
     }
 
     if (targets.containsKey('plug_living')) {
       final plug = targets['plug_living'] as Map<String, dynamic>;
       final bool on = plug['isOn'] as bool? ?? false;
-      chips.add(_buildActionPill('Plug ${on ? "ON" : "OFF"}', Icons.power_rounded));
+      chips.add(_buildActionPill('$plugText ${on ? onText : offText}', Icons.power_rounded));
     }
 
     return Wrap(

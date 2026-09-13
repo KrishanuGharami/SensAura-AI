@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
+import '../l10n/app_localizations.dart';
 import '../models/context_result.dart';
 import 'confidence_gauge.dart';
 
@@ -15,6 +16,7 @@ class ContextHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final contextType = result.context;
     final accentColor = contextType.color;
 
@@ -59,7 +61,7 @@ class ContextHeroCard extends StatelessWidget {
                         Icon(contextType.iconData, size: 13, color: accentColor),
                         const SizedBox(width: 5),
                         Text(
-                          'CONTEXT',
+                          l10n?.tabAiContext.toUpperCase() ?? 'CONTEXT',
                           style: TextStyle(
                             fontSize: 9.5,
                             fontWeight: FontWeight.w800,
@@ -90,7 +92,7 @@ class ContextHeroCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          result.guardResult.decision.userBadge,
+                          result.guardResult.decision.getLocalizedUserBadge(l10n),
                           style: TextStyle(
                             fontSize: 9.5,
                             fontWeight: FontWeight.w800,
@@ -133,9 +135,9 @@ class ContextHeroCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      contextType.displayName.toUpperCase(),
+                      contextType.getLocalizedName(l10n).toUpperCase(),
                       style: const TextStyle(
-                        fontSize: 26,
+                        fontSize: 24,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.5,
                         color: AppColors.textPrimary,
@@ -178,16 +180,16 @@ class ContextHeroCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: AppColors.borderSubtle),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.auto_graph_rounded, size: 14, color: AppColors.cyberCyan),
-                      SizedBox(width: 8),
+                      const Icon(Icons.auto_graph_rounded, size: 14, color: AppColors.cyberCyan),
+                      const SizedBox(width: 8),
                       Text(
-                        'View Sensor Attribution & Reasoning',
-                        style: TextStyle(
+                        l10n?.multimodalTelemetry ?? 'View Sensor Attribution & Reasoning',
+                        style: const TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
@@ -195,7 +197,7 @@ class ContextHeroCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textMuted),
+                  const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textMuted),
                 ],
               ),
             ),

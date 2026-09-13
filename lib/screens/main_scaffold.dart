@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
+import '../l10n/app_localizations.dart';
+import '../models/vision_context_sample.dart';
 import '../services/automation_service.dart';
 import '../widgets/status_app_bar.dart';
 import 'ai_context_screen.dart';
+import 'connected_devices_screen.dart';
 import 'history_screen.dart';
 import 'home_screen.dart';
 import 'live_sensors_screen.dart';
-import 'smart_environment_screen.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -40,8 +42,9 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final screens = [
-      // 1. Home
+      // 1. HOME
       HomeScreen(
         contextResult: _automation.latestContextResult,
         sensorSnapshot: _automation.latestSnapshot,
@@ -55,8 +58,8 @@ class _MainScaffoldState extends State<MainScaffold> {
           _showFeedbackBanner('Applied: ${scene.title}');
         },
         onNavigateToSensors: () => setState(() => _currentIndex = 1),
-        onNavigateToAi: () => setState(() => _currentIndex = 2),
-        onNavigateToEnvironment: () => setState(() => _currentIndex = 3),
+        onNavigateToEnvironment: () => setState(() => _currentIndex = 2),
+        onNavigateToAi: () => setState(() => _currentIndex = 3),
         onClearOverride: () {
           _automation.clearManualOverride();
           _showFeedbackBanner('Manual device lock released');
@@ -67,45 +70,73 @@ class _MainScaffoldState extends State<MainScaffold> {
         },
       ),
 
-      // 2. Live Sensors
+      // 2. LIVE SENSORS
       LiveSensorsScreen(
         snapshot: _automation.latestSnapshot,
         bleDevices: _automation.currentBleProvider.devices,
         latencyMs: _automation.latestContextResult.inferenceLatencyMs,
         isHardware: _automation.isHardwareMode,
+        hardwareAvailable: _automation.currentSensorProvider.isHardware,
         onToggleHardware: (val) {
           _automation.toggleHardwareMode(val);
           _showFeedbackBanner(
-            val ? 'Switched to Hardware Sensors' : 'Switched to Demo Simulation',
+            val ? 'Switched to LIVE HARDWARE' : 'Switched to DEMO SIMULATION',
           );
         },
       ),
 
-      // 3. AI Context
+      // 3. CONNECTED ENVIRONMENT (Demo Smart Space & Physical Nodes)
+      ConnectedDevicesScreen(
+        workstationActuator: _automation.workstationActuator,
+        bleActuator: _automation.bleActuator,
+        demoActuator: _automation.demoActuator,
+        devices: _automation.devices,
+        timeline: _automation.timeline,
+        isManualOverrideActive: _automation.isManualOverrideActive,
+        manualOverrideRemaining: _automation.manualOverrideRemaining,
+        onUpdateDevice: _automation.updateDevice,
+        onClearOverride: () {
+          _automation.clearManualOverride();
+          _showFeedbackBanner('Manual override lease released');
+        },
+        onResetCooldown: () {
+          _automation.resetCooldown();
+          _showFeedbackBanner('Automation cooldown timer reset');
+        },
+      ),
+
+      // 4. AI EXPLANATION & VISION INTENT
       AiContextScreen(
         result: _automation.latestContextResult,
+        visionSample: _automation.latestVision,
+        cameraProvider: _automation.cameraProvider,
+        isAutomationPaused: _automation.isAutomationPausedByGesture,
         isApplyingScene: _automation.isApplyingScene,
         onApplyScene: (scene) {
           _automation.applyScene(scene, manual: true);
           _showFeedbackBanner('Applied: ${scene.title}');
         },
-      ),
-
-      // 4. Smart Environment
-      SmartEnvironmentScreen(
-        devices: _automation.devices,
-        currentScene: _automation.latestContextResult.recommendedScene,
-        onUpdateDevice: (id, {isOn, primaryValue, secondaryStatus}) {
-          _automation.updateDevice(
-            id,
-            isOn: isOn,
-            primaryValue: primaryValue,
-            secondaryStatus: secondaryStatus,
+        onPauseAutomation: () {
+          _automation.pauseAutomationByGesture();
+          _showFeedbackBanner('Automation paused by user');
+        },
+        onResumeAutomation: () {
+          _automation.resumeAutomation();
+          _showFeedbackBanner('Automation resumed');
+        },
+        onInjectGesture: (gesture) {
+          _automation.injectVisionSample(
+            _automation.latestVision.copyWith(
+              gesture: gesture,
+              gestureConfidence: gesture == HandGesture.none ? 0.0 : 0.95,
+              timestamp: DateTime.now(),
+            ),
           );
+          _showFeedbackBanner('Triggered gesture: ${gesture.displayName}');
         },
       ),
 
-      // 5. Automation History
+      // 5. HISTORY
       HistoryScreen(
         events: _automation.history,
         onClearHistory: () {
@@ -118,12 +149,19 @@ class _MainScaffoldState extends State<MainScaffold> {
     return Scaffold(
       appBar: StatusAppBar(
         isHardware: _automation.isHardwareMode,
+        hardwareAvailable: _automation.currentSensorProvider.isHardware,
+        isSensorAvailable: !_automation.isHardwareMode ||
+            (_automation.latestSnapshot.hasAccel &&
+                _automation.latestSnapshot.hasLight &&
+                !_automation.latestSnapshot.isStale()),
+        isBleAvailable: !_automation.isHardwareMode ||
+            _automation.currentBleProvider.isHardware,
         onToggleHardware: () {
           _automation.toggleHardwareMode(!_automation.isHardwareMode);
           _showFeedbackBanner(
             _automation.isHardwareMode
-                ? 'Switched to Hardware Sensors'
-                : 'Switched to Demo Simulation',
+                ? 'Switched to LIVE HARDWARE'
+                : 'Switched to DEMO SIMULATION',
           );
         },
       ),
@@ -142,31 +180,32 @@ class _MainScaffoldState extends State<MainScaffold> {
           backgroundColor: AppColors.backgroundSecondary,
           selectedItemColor: AppColors.primaryAmber,
           unselectedItemColor: AppColors.textMuted,
-          items: const [
+          type: BottomNavigationBarType.fixed,
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
-              label: 'Home',
+              icon: const Icon(Icons.home_outlined),
+              activeIcon: const Icon(Icons.home_rounded),
+              label: l10n?.tabHome ?? 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.sensors_outlined),
-              activeIcon: Icon(Icons.sensors_rounded),
-              label: 'Sensors',
+              icon: const Icon(Icons.sensors_outlined),
+              activeIcon: const Icon(Icons.sensors_rounded),
+              label: l10n?.tabSensors ?? 'Sensors',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.psychology_outlined),
-              activeIcon: Icon(Icons.psychology_rounded),
-              label: 'AI Context',
+              icon: const Icon(Icons.devices_other_outlined),
+              activeIcon: const Icon(Icons.devices_other_rounded),
+              label: l10n?.tabEnvironment ?? 'Environment',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.grid_view_outlined),
-              activeIcon: Icon(Icons.grid_view_rounded),
-              label: 'Smart Living',
+              icon: const Icon(Icons.psychology_outlined),
+              activeIcon: const Icon(Icons.psychology_rounded),
+              label: l10n?.tabAiContext ?? 'AI Context',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.history_toggle_off_rounded),
-              activeIcon: Icon(Icons.history_rounded),
-              label: 'History',
+              icon: const Icon(Icons.history_toggle_off_rounded),
+              activeIcon: const Icon(Icons.history_rounded),
+              label: l10n?.tabHistory ?? 'History',
             ),
           ],
         ),
