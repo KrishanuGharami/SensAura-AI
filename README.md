@@ -315,7 +315,7 @@ In the app's **Connected Devices** screen, enter your laptop's local IP address 
 
 ---
 
-## 🎬 3-Minute Hackathon Jury Demo Walkthrough
+## 🎬 Demo Walkthrough
 
 1. **Step 1 — Show Physical Telemetry**:
    - Open the **Live Sensors** tab. Tilt and move the iQOO 15 to demonstrate live 3-axis accelerometer waveforms updating in real-time. Cover the light sensor to show ambient lux dropping.
